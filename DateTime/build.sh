@@ -5,6 +5,8 @@ PREFIX=/home/www/opt
 export PATH=$PATH:$PREFIX/bin
 export PERL5LIB=$PERL5LIB:$PREFIX/lib/perl5:$PREFIX/lib/perl5/site_perl
 
+filesdir=../files
+
 function print_prompt {
 	local prompt=$1; shift
 	if [ -z $prompt ]; then
@@ -21,13 +23,13 @@ function build_MakefilePL {
 	local version=$1; shift
 	local prompt=$1; shift
 	echo "==> $package-$version"
-	if [ ! -f $package-$version.tar.gz ]; then
-		echo "$package-$version.tar.gz not found"
+	if [ ! -f $filesdir/$package-$version.tar.gz ]; then
+		echo "$filesdir/$package-$version.tar.gz not found"
 		exit 1
 	fi
 
 	echo "===> extracting..."
-	tar zxf $package-$version.tar.gz
+	tar zxf $filesdir/$package-$version.tar.gz
 	cd $package-$version
 
 	echo "===> perl Makefile.PL"
@@ -50,13 +52,13 @@ function build_BuildPL {
 	local version=$1; shift
 	local prompt=$1; shift
 	echo "==> $package-$version"
-	if [ ! -f $package-$version.tar.gz ]; then
-		echo "$package-$version.tar.gz not found"
+	if [ ! -f $filesdir/$package-$version.tar.gz ]; then
+		echo "$filesdir/$package-$version.tar.gz not found"
 		exit 1
 	fi
 
 	echo "===> extracting..."
-	tar zxf $package-$version.tar.gz
+	tar zxf $filesdir/$package-$version.tar.gz
 	cd $package-$version
 
 	echo "===> perl Build.PL"
