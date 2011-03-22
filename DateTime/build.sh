@@ -1,9 +1,9 @@
 #!/bin/sh
 
-PREFIX=/home/www/opt
+#PREFIX=/home/www/opt
 
-export PATH=$PATH:$PREFIX/bin
-export PERL5LIB=$PERL5LIB:$PREFIX/lib/perl5:$PREFIX/lib/perl5/site_perl
+#export PATH=$PATH:$PREFIX/bin
+#export PERL5LIB=$PERL5LIB:$PREFIX/lib/perl5:$PREFIX/lib/perl5/site_perl
 
 filesdir=../files
 
@@ -33,7 +33,8 @@ function build_MakefilePL {
 	cd $package-$version
 
 	echo "===> perl Makefile.PL"
-	perl Makefile.PL PREFIX=$PREFIX 2>&1 | tee log.Makefile
+#	perl Makefile.PL PREFIX=$PREFIX 2>&1 | tee log.Makefile
+	perl Makefile.PL 2>&1 | tee log.Makefile
 	print_prompt $prompt
 
 	echo "===> make"
@@ -62,7 +63,8 @@ function build_BuildPL {
 	cd $package-$version
 
 	echo "===> perl Build.PL"
-	perl Build.PL PREFIX=/home/www/opt 2>&1 | tee log.Makefile
+#	perl Build.PL PREFIX=/home/www/opt 2>&1 | tee log.Makefile
+	perl Build.PL 2>&1 | tee log.Makefile
 	print_prompt $prompt
 
 	echo "===> make"
