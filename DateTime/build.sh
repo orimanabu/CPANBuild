@@ -152,3 +152,5 @@ build_MakefilePL Class-Factory-Util 1.7
 build_MakefilePL DateTime-Format-Strptime 1.2000
 build_MakefilePL DateTime-Format-Builder 0.80
 build_MakefilePL DateTime-Format-ISO8601 0.07
+
+build_MakefilePL DateTime-Format-HTTP 0.40
