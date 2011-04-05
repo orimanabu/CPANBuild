@@ -78,8 +78,6 @@ function build_BuildPL {
 	cd ..
 }
 
-build_MakefilePL Storable 2.25
-
 build_MakefilePL Sub-Uplevel 0.22
 build_MakefilePL Test-Exception 0.29
 
@@ -113,7 +111,7 @@ build_MakefilePL Params-Util 1.01
 build_MakefilePL Data-OptList 0.106
 build_MakefilePL Sub-Exporter 0.982
 build_MakefilePL Text-Template 1.45
-build_MakefilePL Test-Simple 0.94
+build_MakefilePL Test-Simple 0.98
 
 build_MakefilePL ExtUtils-CBuilder 0.2703
 build_MakefilePL ExtUtils-ParseXS 2.2205
@@ -127,3 +125,5 @@ build_MakefilePL Data-Section 0.100770
 build_MakefilePL Software-License 0.101410
 
 build_MakefilePL Module-Build 0.3607
+
+build_MakefilePL Storable 2.25
