@@ -78,6 +78,8 @@ function build_BuildPL {
 	cd ..
 }
 
+build_MakefilePL Storable 2.25
+
 build_MakefilePL Sub-Uplevel 0.22
 build_MakefilePL Test-Exception 0.29
 
