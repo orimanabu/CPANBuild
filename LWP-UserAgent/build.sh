@@ -86,7 +86,7 @@ build_MakefilePL HTTP-Message 6.02
 build_MakefilePL HTTP-Cookies 6.00
 build_MakefilePL HTTP-Negotiate 6.00
 build_MakefilePL HTTP-Daemon 6.00
-build_MakefilePL Net::HTTP 6.00
-build_MakefilePL WWW::RobotRules 6.01
+build_MakefilePL Net-HTTP 6.00
+build_MakefilePL WWW-RobotRules 6.01
 build_MakefilePL File-Listing 6.02
 build_MakefilePL libwww-perl 6.02
