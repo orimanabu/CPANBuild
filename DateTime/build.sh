@@ -78,9 +78,6 @@ function build_BuildPL {
 	cd ..
 }
 
-build_MakefilePL Sub-Uplevel 0.22
-build_MakefilePL Test-Exception 0.29
-
 build_MakefilePL Attribute-Handlers 0.88
 build_BuildPL Params-Validate 0.95
 

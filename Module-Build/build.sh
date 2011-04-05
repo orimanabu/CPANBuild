@@ -78,6 +78,9 @@ function build_BuildPL {
 	cd ..
 }
 
+build_MakefilePL Sub-Uplevel 0.22
+build_MakefilePL Test-Exception 0.29
+
 build_MakefilePL YAML-Tiny 1.41
 build_MakefilePL Test-Harness 3.21
 
