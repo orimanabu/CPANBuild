@@ -1,9 +1,9 @@
 #!/bin/sh
 
-PREFIX=/home/www/opt
+#PREFIX=/home/www/opt
 
-export PATH=$PATH:$PREFIX/bin
-export PERL5LIB=$PERL5LIB:$PREFIX/lib/perl5:$PREFIX/lib/perl5/site_perl:$PREFIX/lib64/perl5:$PREFIX/lib64/perl5/site_perl
+#export PATH=$PATH:$PREFIX/bin
+#export PERL5LIB=$PERL5LIB:$PREFIX/lib/perl5:$PREFIX/lib/perl5/site_perl:$PREFIX/lib64/perl5:$PREFIX/lib64/perl5/site_perl
 
 filesdir=../files
 
@@ -33,7 +33,8 @@ function build_MakefilePL {
 	cd $package-$version
 
 	echo "===> perl Makefile.PL"
-	perl Makefile.PL PREFIX=$PREFIX 2>&1 | tee log.Makefile
+#	perl Makefile.PL PREFIX=$PREFIX 2>&1 | tee log.Makefile
+	perl Makefile.PL 2>&1 | tee log.Makefile
 	print_prompt $prompt
 
 	echo "===> make"
@@ -62,7 +63,8 @@ function build_BuildPL {
 	cd $package-$version
 
 	echo "===> perl Build.PL"
-	perl Build.PL PREFIX=/home/www/opt 2>&1 | tee log.Makefile
+#	perl Build.PL PREFIX=/home/www/opt 2>&1 | tee log.Makefile
+	perl Build.PL 2>&1 | tee log.Makefile
 	print_prompt $prompt
 
 	echo "===> make"
@@ -76,15 +78,15 @@ function build_BuildPL {
 	cd ..
 }
 
-build_MakefilePL XML-NamespaceSupport 1.11 "prompt"
-build_MakefilePL XML-SAX 0.96 "prompt"
-build_MakefilePL XML-SAX-Expat 0.40 "prompt"
-build_MakefilePL XML-Simple 2.18 "prompt"
+build_MakefilePL XML-NamespaceSupport 1.11
+build_MakefilePL XML-SAX 0.96
+build_MakefilePL XML-SAX-Expat 0.40
+build_MakefilePL XML-Simple 2.18
 
-build_MakefilePL XML-Parser 2.36 "prompt"
-build_MakefilePL XML-Twig 3.34 "prompt"
-build_MakefilePL Test-Parser 2.36 "prompt"
+build_MakefilePL XML-Parser 2.36
+build_MakefilePL XML-Twig 3.34
+build_MakefilePL Test-Parser 1.9
 
-build_MakefilePL Test-Reporter 1.57 "prompt"
+build_MakefilePL Test-Reporter 1.57
 
-build_MakefilePL Statistics-Descriptive 3.0100 "prompt"
+build_MakefilePL Statistics-Descriptive 3.0100
