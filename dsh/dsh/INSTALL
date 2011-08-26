@@ -1,0 +1,191 @@
+I. REQUIRED SOFTWARE
+
+Perl, version 5.005_03 or later.  The latest version of Perl can be found at
+http://www.perl.com/CPAN/src/stable.tar.gz
+
+Properly configured rsh (see CONFIGURING RSH below) or ssh (see CONFIGURING SSH
+below).  ssh can be found at http://www.openssh.org
+
+(Optional) Term-ReadLine-Gnu Perl module, version 1.08 or later.  This module 
+is not part of the standard distribution of Perl, so you will probably need to 
+install this if you'd like to include this functionality in dsh (see the README
+file for information about interactive dsh).  Term-ReadLine-Gnu can be found on
+the dsh website (http://dsh.sourceforge.net).  The newest version of 
+Term-ReadLine-Gnu can be found at 
+http://www.perl.com/CPAN-local/modules/by-module/Term/
+
+II. TERM-READLINE-GNU INSTALLTION
+
+Quick:
+
+gunzip Term-ReadLine-Gnu-x.xx.tar.gz
+tar -xvf Term-ReadLine-Gnu-x.xx.tar
+cd Term-ReadLine-Gnu-x.xx
+perl Makefile.PL
+make
+su
+make install
+
+For a more detailed description of installing the Term-Readline-Gnu Perl module,
+see the file INSTALL in the Term-ReadLine-Gnu-x.xx directory.
+
+Note that if you are not running Linux, you will probably need to install
+the GNU readline library first.  The GNU readline library can be found on
+the dsh website (http://dsh.sourceforge.net).  See 
+README_<your operating system> for special notes regarding installing 
+Term-Readline-Gnu on your operating system.
+
+III. DSH INSTALLATION
+
+Quick:
+
+perl configure
+su
+./install
+
+A number of configuration options are available. A description of each option
+can be found by typing: 
+
+perl configure --help
+
+IV.  CONFIGURING RSH
+
+1.) The first thing you need to do is make sure an rshd server is running on all
+nodes where you want to execute commands with dsh (note: you don't need an rshd
+server running on the computer that you are running dsh on, except if you also
+want to execute commands on this computer)
+    On most modern operating systems, the rshd server doesn't wait for rsh
+commands by itself; instead the inetd server waits for the command and calls
+the rshd server when needed. So to make sure that inetd can call the rsh server,
+uncomment the line
+	shell stream tcp ... in.rshd
+in the file /etc/inetd.conf or a similar file on your system (note that you need
+to restart inetd before this change comes into effect)
+
+On some systems inetd may have been replaced by xinetd.
+
+2.) The next step is to allow the computer running dsh to access the rsh 
+servers.  This is done by placing a file in your home directory called .rhosts
+which contains the hostname of the computer running dsh (assuming your username
+is the same on both computers).  For example, if I want to run dsh on a computer
+called front_end to execute a command on a computer called node1 and a computer
+called node2, then my .rhosts file on node1 would look like:
+	mtp22@node1 $ cat ~/.rhosts
+	front_end
+and my .rhosts file on node2 would look like:
+	mtp22@node2 $ cat ~/.rhosts
+	front_end
+and I don't need a .rhosts file on front_end
+	mtp22@front_ned $ cat ~/.rhosts
+	cat: .rhosts: No such file or directory
+
+These hostnames must be resolvable from each computer.  One way of doing this
+is to add a line for front_end in the /etc/hosts file on node1 and node2:
+	mtp22@node1 $ cat /etc/hosts
+	127.0.0.1               localhost.localdomain localhost
+	10.10.10.1          	node1
+	10.10.10.254            front_end
+	mtp22@node2 $ cat /etc/hosts
+	127.0.0.1               localhost.localdomain localhost
+	10.10.10.2          	node2
+	10.10.10.254            front_end
+front_end must also be able to resolve the hostnames node1 and node2.  For
+example:
+	mtp22@front_end $ cat /etc/hosts
+	127.0.0.1               localhost.localdomain localhost
+	10.10.10.254            front_end
+	10.10.10.1          	node1
+	10.10.10.2          	node2
+
+now I can run dsh:
+	mtp22@front_end $ dsh -w node1, node2 date
+	executing 'date'
+	node1:      Thu Jul 5 13:31:29 EDT 2001
+	node2:      Thu Jul 5 13:31:29 EDT 2001
+
+This works fine in a closed computing environment. For example, a beowulf
+cluster where there is a front end connected to the outside world but none
+of the computing nodes have access to any other computers except for the
+front end and other computing nodes.  Setting the cluster up in such a manner
+is a matter of setting up a firewall, and is beyond the scope of this 
+discussion. If your computing nodes are connected to the outside world, running
+an rsh server on them presents a major security problem: the only authentication
+rsh uses is what computer the connection is coming from and what user on that
+computer the connection is coming from.  Both of these can be easily spoofed.
+In this type of situation, it is a lot safer to use ssh.
+
+V. CONFIGURING SSH
+
+The following instructions apply to OpenSSH v2.0 or later.
+
+Scenario: I want to run dsh on a computer called front_end to execute a command
+on a computer called node1 and a computer called node2:
+
+1.) create a personal ssh key on front_end:
+	mtp22@front_end $ ssh-keygen -d
+	Enter file in which to save the key (~/.ssh/id_dsa): <enter>
+	Enter passpharse (empty for no passphrase): <enter>
+	Enter same passphrase again: <enter>
+
+2.) copy the file ~/.ssh/id_dsa.pub on front_end
+    to ~/.ssh/authorized_keys2 on node1
+    and to ~/.ssh/authorized_keys2 on node2
+
+There are many ways to do this.  One way is to use scp (secure copy):
+
+mtp22@front_end $ scp ~/.ssh/id_dsa.pub mtp22@node1:~/.ssh/authorized_keys2
+mtp22@node1's password: **************
+id_dsa.pub           100% |*****************************|   617       00:00
+mtp22@front_end $ scp ~/.ssh/id_dsa.pub mtp22@node2:~/.ssh/authorized_keys2
+mtp22@node2's password: **************
+id_dsa.pub           100% |*****************************|   617       00:00 
+
+Now you should be able to ssh to node1 and node2 from front_end without entering
+a password, yet it is still secure provided noone can read your private 
+key (~/.ssh/id_dsa).
+
+3.) now I can run dsh:
+	mtp22@front_end $ dsh -w node1, node2 date
+	executing 'date'
+	node1:      Thu Jul 5 13:31:29 EDT 2001
+	node2:      Thu Jul 5 13:31:29 EDT 2001
+
+The first time that you run this command, you'll probably see:
+
+node1: The authenticity of host 'node1 (10.10.10.1)' can't be established.
+node1: RSA key fingerprint is 46:2f:60:cd:05:b7:04:b6:c0:89:1a:f2:68:e9:97:4c.
+
+And dsh will hang.  It is actually waiting for you to answer the question:
+Are you sure you want to continue connecting (yes/no)? 
+
+So if you type yes, dsh should continue and execute properly.
+
+This same message will appear for each node.
+
+My recommendation is to set up the ALL file (see README) with all the nodes
+where you'd like to execute commands, and run 'dsh -a date'.  This will
+prompt you for each node, so you'll have to type yes for each node, but once
+you do this, any subsequent times that you run dsh, ssh won't display this
+message. In fact, after you do this, you should be able to type 'dsh -a date' 
+again and it shouldn't hang at all.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

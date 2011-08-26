@@ -1,0 +1,591 @@
+#!/usr/bin/perl -w
+use strict;
+################################################################################
+# 
+# configure - dsh configuration script
+#
+# Author : Matthew T. Piotrowski
+#          Center for Computational Research at the University at Buffalo
+#          mtp22@users.sourceforge.net
+# 
+# Last Modified: 07/23/2001
+#
+# Copyright (c) 2001 State University of New York at Buffalo
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# Modification history:
+#
+# 07/23/2001 mtp : initial release
+#
+################################################################################
+
+use Config;
+use Getopt::Long;
+
+# path to search for executable files
+my @PATH = ('/usr/local/bin', '/usr/bin', '/bin');
+# where to store the dsh executable (i.e. $prefix/bin/)
+my $prefix = '/usr/local';
+# decides whether dsh attempts to add support for Term-ReadLine-Gnu
+my $no_readline = undef;
+# decides whether the default RSH_CMD is ssh or rsh; rsh by default
+my $use_ssh = undef;
+# full path of the ssh executable; default is to search the directories
+# in the PATH variable above
+my $ssh_location = undef;
+# the directory where the node_groups folder is located
+my $beowulf_root = '/usr/local/dsh';
+# whether or not to create the node_groups directory in $beowulf_root;
+# default is yes, create the node_groups directory
+my $dont_create_node_groups_dir = '0';
+# full path of the pod2man executable
+my $pod2man_location = ($Config{'installbin'} || '/usr/bin') . '/' . 'pod2man';
+# where to store the dsh man page; default location is prefix/man/man1
+my $man_prefix = undef;
+# decides whether or not to install the dsh manpage
+my $no_manpage = 0;
+# full path of the perl executable
+my $perl_location = $Config{'perlpath'} || '/usr/bin/perl';
+# location of Term/Readline/Gnu.pm; default is to search the @INC
+# variable, where Perl stores the path to the module directories
+my $readline_directory = undef;
+# full path of the rsh executable; default is to search the directories
+# in the PATH variable above
+my $rsh_location = undef;
+# full path of the cat executable; default is to search the directories
+# in the PATH variable above
+my $cat_location = undef;
+
+GetOptions('prefix=s' => \$prefix,
+	   'no-readline' => \$no_readline,
+	   'use-ssh' => \$use_ssh,
+	   'ssh-location=s' => \$ssh_location,
+	   'beowulf-root=s' => \$beowulf_root,
+	   'dont-create-node-groups-dir' => \$dont_create_node_groups_dir,
+	   'pod2man-location=s' => \$pod2man_location,
+	   'man-prefix=s' => \$man_prefix,
+	   'no-manpage' => \$no_manpage,
+	   'perl-location=s' => \$perl_location,
+	   'readline-directory=s' => \$readline_directory,
+	   'rsh-location=s' => \$rsh_location,
+	   'cat-location=s' => \$cat_location,
+	   'help' => \&print_help_information)
+    or die "use the --help switch to list configuration options\n";
+
+print "checking for Perl... ";
+if (-e "$perl_location") {
+  # check to make sure the user entered the full path of the pod2man
+  # executable and not just the directory the pod2man executable is in
+  if ($perl_location !~ /perl$/) {
+      print "$perl_location doesn't appear to be a perl executable.\n";
+      print "It appears to be a directory.\n";
+      my $answer = undef;
+      while (($answer !~ /^y$/i) && ($answer !~ /^n$/i)) {
+	  print "Would you still like to continue? [y or n] ";
+	  chomp($answer = <STDIN>);
+      }
+      exit(1) if $answer =~ /^n$/i;
+      print "OK. Using $perl_location as the perl executable.\n";
+  }
+  else {
+      print "\'$perl_location\'\n";
+  }
+}
+else {
+  print "not found\n";
+  print "This program is needed to run dsh.\n";
+  print "If perl is on your computer but dsh didn't find it, you\n";
+  print "can specify the location using the --perl-location option.\n";
+  print "for example, perl configure --perl-location=/util/bin/perl\n";
+  exit(1);
+}
+
+# add support for Term-ReadLine-Gnu unless the user specified not to include
+# this support
+unless ($no_readline) {
+   print "checking for Term::Readline::Gnu... ";
+   # search for the readline location unless the user already specified one
+   if (defined($readline_directory)) {
+       # allow the user to specify the full path of the module, but the full 
+       # path shouldn't be added to @INC, so truncate the path if necessary
+       $readline_directory =~ s/\/Term\/Readline\/?(Gnu\.pm)?$//;
+   }
+   else {
+     MODULE: foreach my $lib_directory(@INC) {
+	       if (-e "$lib_directory/Term/ReadLine/Gnu.pm") {
+	           $readline_directory = $lib_directory;
+	           last MODULE;
+	       }
+     }
+   }
+   if (defined($readline_directory) and
+       -e "$readline_directory/Term/ReadLine/Gnu.pm") {
+      print "\'$readline_directory/Term/ReadLine/Gnu.pm\'\n";
+   }
+   else {
+     print "not found.\n";
+     print "The Term-ReadLine-Gnu Perl module is necessary for some features\n";
+     print "of interactive dsh. Term-ReadLine-Gnu can be found on the dsh\n";
+     print "website (http://dsh.sourceforge.net). Information on installing\n"; 
+     print "this module can be found in INSTALL. You can install dsh\n"; 
+     print "without Term-ReadLine-Gnu by specifying the --no-readline\n";
+     print "option to configure:\n";
+     print "perl configure --no-readline\n";
+     print "dsh without Term-ReadLine-Gnu will work fine, however if you\n";
+     print "enter interactive dsh by not specifying a command on the command\n";
+     print "line, things like backspace and the home and end characters\n";
+     print "won't function as you may expect.\n";
+     exit(1);
+   }
+}
+
+# determine where the rsh or ssh executable is located
+if ($use_ssh) {
+  print "checking for ssh... ";
+  # search for ssh unless the user already specified a location
+  unless (defined($ssh_location)) {
+    SSH: foreach my $bin_directory(@PATH) {
+            if (-e "$bin_directory/ssh") {
+	       $ssh_location = "$bin_directory/ssh";
+	       last SSH;
+            }
+    }
+  }
+  if (-e "$ssh_location") {
+      # check to make sure the user entered the full path of the ssh
+      # executable and not just the directory the ssh executable is in
+      if ($ssh_location !~ /ssh$/) {
+	  print "$ssh_location doesn't appear to be a ssh " .
+	        "executable.\n";
+          print "It appears to be a directory.\n";
+          my $answer = undef;
+          while (($answer !~ /^y$/i) && ($answer !~ /^n$/i)) {
+              print "Would you still like to continue? [y or n] ";
+	      chomp($answer = <STDIN>);
+          }
+          exit(1) if $answer =~ /^n$/i;
+          print "OK. Using $ssh_location as the ssh executable.\n";
+      }
+      else {
+          print "\'$ssh_location\'\n";
+      }
+  }
+  else {
+     print "not found\n";
+     print "This program is needed to run dsh.\n";
+     print "If ssh is on your computer but dsh didn't find it, you\n";
+     print "can specify the location using the --ssh-location option.\n";
+     print "for example, perl configure --ssh-location=/util/bin/ssh\n";
+     exit(1);
+  }
+}
+else {
+  print "checking for rsh... ";
+  # search for rsh unless the user already specified a location
+  unless (defined($rsh_location)) {
+    RSH: foreach my $bin_directory(@PATH) {
+            if (-e "$bin_directory/rsh") {
+      	       $rsh_location = "$bin_directory/rsh";
+	       last RSH;
+	    }
+    }
+  }
+  if (-e "$rsh_location") {
+      # check to make sure the user entered the full path of the rsh
+      # executable and not just the directory the rsh executable is in
+      if ($rsh_location !~ /rsh$/) {
+	  print "$rsh_location doesn't appear to be a rsh " .
+	        "executable.\n";
+          print "It appears to be a directory.\n";
+          my $answer = undef;
+          while (($answer !~ /^y$/i) && ($answer !~ /^n$/i)) {
+              print "Would you still like to continue? [y or n] ";
+	      chomp($answer = <STDIN>);
+          }
+          exit(1) if $answer =~ /^n$/i;
+          print "OK. Using $rsh_location as the rsh executable.\n";
+      }
+      else {
+          print "\'$rsh_location\'\n";
+      }
+  }
+  else {
+     print "not found\n";
+     print "This program (or ssh) is needed to run dsh.  To install\n";
+     print "dsh using ssh instead of rsh, specify the\n";
+     print "--use-ssh option to configure.\n";
+     print "for example, perl configure --use-ssh\n";
+     print "Or if rsh is on your computer but dsh didn't find it, you\n";
+     print "can specify the location using the --rsh-location option.\n";
+     print "for example, perl configure --rsh-location=/util/bin/rsh\n";
+     exit(1);
+  }
+}
+
+$man_prefix = "$prefix/man" unless (defined($man_prefix));
+
+# determine where cat is located
+print "checking for cat... ";
+# search for cat unless the user already specified a location    
+unless (defined($cat_location)) {
+   CAT: foreach my $bin_directory(@PATH) {
+	   if (-e "$bin_directory/cat") {
+	       $cat_location = "$bin_directory/cat";
+	       last CAT;
+	   }
+   }
+}
+if (-e "$cat_location") {
+   # check to make sure the user entered the full path of the cat
+   # executable and not just the directory the cat executable is in
+   if ($cat_location !~ /cat$/) {
+       print "$cat_location doesn't appear to be a cat executable.\n";
+       print "It appears to be a directory.\n";
+       my $answer = undef;
+       while (($answer !~ /^y$/i) && ($answer !~ /^n$/i)) {
+	   print "Would you still like to continue? [y or n] ";
+	   chomp($answer = <STDIN>);
+       }
+       exit(1) if $answer =~ /^n$/i;
+       print "OK. Using $cat_location as the cat executable.\n";
+   }
+   else {
+       print "\'$cat_location\'\n";
+   }
+}
+else {
+   print "not found\n";
+   print "This program is needed to create the dsh executable.\n";
+   print "If cat is on your computer but dsh didn't find it, you\n";
+   print "can specify the location using the --cat-location option.\n";
+   print "for example, perl configure --cat-location=/util/bin/cat\n";
+   exit(1);
+}
+
+# check to make sure there is a pod2man executable unless the user
+# specified not to install a manpage
+unless ($no_manpage) {
+  print "checking for pod2man... ";
+  if (-e "$pod2man_location") {
+      # check to make sure the user entered the full path of the pod2man
+      # executable and not just the directory the pod2man executable is in
+      if ($pod2man_location !~ /pod2man$/) {
+	  print "$pod2man_location doesn't appear to be a pod2man " .
+	        "executable.\n";
+          print "It appears to be a directory.\n";
+          my $answer = undef;
+          while (($answer !~ /^y$/i) && ($answer !~ /^n$/i)) {
+              print "Would you still like to continue? [y or n] ";
+	      chomp($answer = <STDIN>);
+          }
+          exit(1) if $answer =~ /^n$/i;
+          print "OK. Using $pod2man_location as the pod2man executable.\n";
+      }
+      else {
+          print "\'$pod2man_location\'\n";
+      }
+  }
+  else {
+     print "not found\n";
+     print "This program is needed to create the dsh manpage.  To install\n";
+     print "dsh without installing the dsh manpage, specify the\n";
+     print "--no-manpage option to configure.\n";
+     print "for example, perl configure --no-manpage\n";
+     print "Or if pod2man is on your computer but dsh didn't find it, you\n";
+     print "can specify the location using the --pod2man-location option.\n";
+     print "for example, perl configure --pod2man-location=/util/bin/pod2man\n";
+     exit(1);
+  }
+}
+
+################################################################################
+# split the dsh executable into 3 parts, the header (which contains copyright
+# information, etc.), the configuration section, and the body
+################################################################################
+
+open(FILE_IN, "< dsh.pl");
+
+# header
+open(FILE_OUT, "> dsh.part1");
+# replace #!/usr/bin/perl -w with the location of perl on the current system
+# and remove the use strict pragma
+<FILE_IN>; # eat line 1, #!/usr/bin/perl -w
+<FILE_IN>; # eat line 2, use strict;
+print FILE_OUT "#!$perl_location\n";
+print FILE_OUT "\n";
+
+my $line;
+while (($line = <FILE_IN>) =~ /^\#/) {
+       print FILE_OUT "$line";
+}
+close(FILE_OUT);
+
+# configuration section
+open(FILE_OUT, "> dsh.part2");
+# read until a line of all #'s, which separates the configuration section
+# from the body
+until ($line =~ /^\#+\n$/) {
+    print FILE_OUT "$line";
+    $line = <FILE_IN>;
+}
+print FILE_OUT "$line";
+close(FILE_OUT);
+
+# body
+open(FILE_OUT, "> dsh.part3");
+while (<FILE_IN>) {
+    print FILE_OUT "$_";
+}
+close(FILE_OUT);
+
+close(FILE_IN);
+
+################################################################################
+# rewrite dsh configuration section (i.e. dsh.part2) based on the values we 
+# found earlier and user-specified values
+################################################################################
+
+open(FILE_OUT, "> dsh.part2")
+    or die "$0: can't create file \'dsh.part2\': $!";
+
+unless (defined($no_readline)) {
+    print FILE_OUT "use lib \"$readline_directory\";\n";
+}
+
+print FILE_OUT <<'DSH_PART2_A';
+
+# developer's note: if anything from here to the line of all #'s is edited,
+# this change should also be reflected in the configuration script
+
+use IO::Handle;
+use Socket;
+# if Term-ReadLine-Gnu is not installed, this call will not generate
+# an error because the standard Perl distribution includes a Term-ReadLine
+# module, which is what this call refers to.  This module, Term-ReadLine, is 
+# mostly an interface to C readline libraries for other Perl modules (for 
+# example, Term-ReadLine-Gnu); it doesn't implement many of the ReadLine 
+# functions itself, but it does implement enough of these functions that 
+# calling Term::ReadLine->new doesn't fail if Term-ReadLine-Gnu is not installed
+use Term::ReadLine;
+
+# User Configuration ###########################################################
+# the command that is used to execute your command (the one you specify 
+# to dsh) on the nodes you specify to dsh (note: if you change this command,
+# for example, to ssh, you need to change the following variable also;
+# in this example, you would change it to getservbyname("ssh", "tcp")
+DSH_PART2_A
+if ($use_ssh) {
+    print FILE_OUT "my \$RSH_CMD = \"$ssh_location\";\n";
+}
+else {
+    print FILE_OUT "my \$RSH_CMD = \"$rsh_location\";\n";
+}
+print FILE_OUT <<'DSH_PART2_B';
+# the port used to contact the nodes you specify to dsh
+# (note: getservbyname looks in the file /etc/services to determine
+# the port number, so make sure there is a line in this file which has
+# the service you specify) (also note: if you change this value to a
+# non-standard port, for example, 91 for ssh, you need to edit the RSH_CMD
+# variable so that it contacts the remote service on this port, for example,
+# my $RSH_CMD = "/usr/bin/ssh -p 91")
+DSH_PART2_B
+if ($use_ssh) {
+    print FILE_OUT qq(my \$RSH_CMD_PORT = getservbyname("ssh", "tcp") ) .
+	           qq(|| "514";\n);
+}
+else {
+    print FILE_OUT qq(my \$RSH_CMD_PORT = getservbyname("shell", "tcp") ) .
+	           qq(|| "22";\n);
+}
+print FILE_OUT <<"DSH_PART2_C";
+# directory where the "node_groups" folder is located
+my \$BEOWULF_ROOT = \$ENV{BEOWULF_ROOT} || "$beowulf_root";
+# name of file containing all nodes; located in \$BEOWULF_ROOT/node_groups/
+my \$ALL_NODES = "ALL";
+# number of nodes to process in parallel (this is approximately 1/3 of the 
+# number of processes that will be running at one time); the default is 
+# the total number of nodes
+my \$fanout = \$ENV{FANOUT};
+# the default time to wait for a node to respond when checking to see if 
+# we can rsh to the node (note: this can also be set at the command line
+# with the -t switch)
+my \$DEFAULT_TIMEOUT = 5;
+################################################################################
+DSH_PART2_C
+
+close(FILE_OUT);
+
+################################################################################
+# cat together the 3 parts of the dsh executable
+################################################################################
+
+if (system("$cat_location dsh.part1 dsh.part2 dsh.part3 > dsh") != 0) {
+    exit(1);
+}
+
+chmod(0755, "./dsh")
+   or die "$0: couldn't change the permissions of \`./dsh\`: $!\n";
+
+################################################################################
+# create the dsh manpage
+################################################################################
+unless ($no_manpage) {
+    print "creating dsh manpage... ";
+    my $command = "$pod2man_location dsh.pod --section=1 --release=".
+	          "'dsh manpage' --center='System Reference Manual' > dsh.1";
+    if (system($command) != 0) {
+	exit(1);
+    }
+    print "complete\n";
+}
+
+################################################################################
+# write an install script based on configuration
+################################################################################
+
+print "creating install script... ";
+open(INSTALL_SCRIPT, "> install")
+    or die "$0: couldn't create file \'install\': $!\n";
+
+print INSTALL_SCRIPT << "INSTALL";
+#!$perl_location
+
+################################################################################
+# Copyright (c) 2001 State University of New York at Buffalo
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+################################################################################
+
+use File::Copy;
+use File::Path;
+
+print "\\n";
+print "This will install the following file(s) in the following locations:\\n";
+print "dsh executable: $prefix/bin/dsh\\n";
+print "dsh manpage:   $man_prefix/man1/dsh.1\\n" unless $no_manpage;
+
+unless ($dont_create_node_groups_dir) {
+    print "And this will create the following directory:\\n";
+    print "node_groups directory: $beowulf_root/node_groups/\\n";
+}
+print "\\n";
+my \$answer = '';
+while ((\$answer !~ /^y\$/i) \&\& (\$answer !~ /^n\$/i)) {
+    print "Would you like to continue [y or n] ";
+    \$answer = <STDIN>;
+}
+exit(1) if \$answer =~ /^n\$/i;
+print "\\n";
+
+mkpath("$prefix/bin", 1, 0755);
+copy("./dsh", "$prefix/bin/dsh")
+   or die "\$0: couldn't copy dsh to \'$prefix/bin/dsh\': \$!\\n" .
+          "Installation failed.\\n";
+chmod(0755, "$prefix/bin/dsh")
+   or die "\$0: couldn't change the permissions of \`./dsh\`: \$!\\n" .
+          "Installation failed.\\n\\n";
+print "dsh executable installed\\n";
+
+unless ($no_manpage) {
+    mkpath("$man_prefix/man1", 1, 0755);
+    copy("./dsh.1", "$man_prefix/man1/dsh.1")
+       or die "\$0: couldn't copy dsh.1 to \'$man_prefix/man1\': \$!\\n" .
+	      "Installation failed.\\n";
+    print "dsh man page installed\\n";
+}
+
+unless ($dont_create_node_groups_dir) {
+    mkpath("$beowulf_root/node_groups", 1, 0755);
+    unless (-e "$beowulf_root/node_groups") {
+	die "\$0: couldn't create directory \'$beowulf_root/node_groups\': " .
+            "\$!\\nInstallation failed.\\n\\n";
+    }
+}
+
+print "Installation complete.\\n\\n";
+exit;
+INSTALL
+
+close(INSTALL_SCRIPT);
+
+chmod(0755, "./install")
+   or die "$0: couldn't change the permissions of \`./install\`: $!\n";
+
+print "complete\n";
+
+print "Configuration complete.  Type ./install to install dsh.\n";
+
+exit;
+
+sub print_help_information {
+    print <<"HELP_INFORMATION";
+Options: [defaults are printed in  brackets after the descriptions]
+    --prefix=PREFIX               the dsh executable will be installed 
+	                          in PREFIX/bin/dsh [/usr/local]
+    --no-readline                 specifies not to add support for
+	                          the Term-ReadLine-Gnu Perl module
+    --use-ssh                     picks ssh as the default way of communicating
+	                          with nodes [no by default, implying rsh]
+    --ssh-location=SSH_LOCATION   the full path of the ssh executable
+	                          (e.g. '/usr/bin/ssh')
+				  [/usr/local/bin, /usr/bin, and /bin are
+				   searched (in that order)]
+    --beowulf-root=BEOWULF_DIR    location of the node_groups directory; or
+	                          if the node_groups directory hasn't been
+                                  created already, the location to put the
+                                  node_groups directory
+                                  [/usr/local/dsh]
+    --dont-create-node-groups-dir specifies to not create the node_groups
+                                  directory [create the node_groups directory
+                                  in BEOWULF_DIR]
+    --pod2man-location=POD2MAN    the full path of the pod2man executable
+	                          (e.g. '/usr/bin/pod2man')
+				  [the location where the Perl binaries
+				   were initially installed]
+    --man-prefix=MAN_PREFIX       the dsh man page will be installed
+	                          in MAN_PREFIX/man1/dsh.1 [PREFIX/man]
+    --no-manpage                  specifies not to install the dsh manpage
+    --perl-location=P_LOCATION    the full path of the perl executable
+	                          (e.g. '/usr/bin/perl')
+				  [the location of the perl executable that
+				   you use to run this script]
+    --readline-directory=DIR      location of Term/Readline/Gnu.pm
+	                          [the normal Perl module directories
+				   are searched]
+    --rsh-location=RSH_LOCATION   the full path of the rsh executable
+	                          (e.g. '/usr/bin/rsh')
+				  [/usr/local/bin, /usr/bin, and /bin are
+				   searched (in that order)]
+    --cat-location=CAT_LOCATION   the full path of the perl executable
+	                          (e.g. '/bin/cat')
+				  [/usr/local/bin, /usr/bin, and /bin are
+				   searched (in that order)]
+    --help                        displays this information
+HELP_INFORMATION
+   exit;
+}

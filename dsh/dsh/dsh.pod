@@ -1,0 +1,407 @@
+###############################################################################
+# pod (Perl's documentation language)
+#
+# to compile into a manpage I use:
+# pod2man dsh.pod --section=1 --release='dsh manpage' 
+# --center='System Reference Manual' > dsh.1
+#
+# Author: Matthew T. Piotrowski <mtp22@users.sourceforge.net>
+# Copyright (c) 2001 Matthew T. Piotrowski <mtp22@users.sourceforge.net>, 
+#                    All rights reserved
+#
+# The OpenSSH manpage, v1.99, was used as a reference.
+#
+# This manpage can be used and distributed under the same terms as
+# dsh itself.
+#
+# $Id: dsh.pod,v 1.5 2002/01/14 17:01:20 mtp22 Exp $
+###############################################################################
+
+=head1 NAME
+
+B<dsh> - the distributed shell
+
+=head1 SYNOPSIS
+
+B<dsh> [B<-a>] [B<-e> I<'command'>] [B<-f>] [B<-h>] [B<-N> 
+I<nodegroup1, nodegroup2, ...>] [B<-w> I<node1, node2, ...>] [I<command>]
+
+=head1 DESCRIPTION
+
+B<dsh> (the distributed shell) is a program which executes a single command
+on multiple remote machines.  It can execute this command in parallel
+(i.e. on any number of machines at a time) or in serial (by
+specifying parallel execution of the command on 1 node at a time).
+It was originally designed to work with rsh, but has full support for
+ssh and with a little tweaking of the top part of the B<dsh> executable, 
+should work with any program that allows remote execution
+of a command without an interactive login.
+
+B<dsh> takes a command and a set of nodes from the user; it checks the nodes
+to make sure they can be contacted, and then runs the command on each node.
+B<dsh> displays the output (STDERR and STDOUT) of each node
+preceded by its name. The order the nodes are displayed is described in 
+I<"A Brief Description of How dsh Removes Duplicates">,
+in L<B<SPECIFYING NODES>>.
+
+B<dsh> can also be run in interactive mode.  This mode is entered when the
+user doesn't specify a command on the command line.  In this mode, B<dsh>
+will present the user with a prompt.  Here the user can enter a
+command and B<dsh> will run the command on the nodes that the user
+specified when B<dsh> was started.  After the command is run, the user
+will again be presented with a prompt and can enter another command.  
+It is important to note that this mode
+does not actually log in to all of the nodes: it executes each command
+separately using the remote execution program specified (typically
+rsh or ssh).  An important consequence of this is that any properties
+of a login shell, such as setting environment variables and job control, are 
+not present.  Although B<dsh>
+does not actually log in to each node, commands entered at the B<dsh>
+prompt are not interpreted by the local shell.  So entering 
+echo $PATH at the B<dsh> prompt (I<dshE<gt> echo $PATH>) 
+is different than entering echo $PATH at the regular command line 
+(I<dsh echo $PATH>).  In the first case, the command echo $PATH is passed to 
+the remote computer as is, and so the PATH variable refers to the variable on
+the remote machine.  In the second case, the variable PATH is first 
+interpreted by the local shell, which replaces $PATH with the value
+of PATH on the local machine before the command is passed to
+the remote machine.  To simulate the first case at the regular
+command line, use the -e switch (I<dsh -e 'echo $PATH'>) or quote the
+variable to avoid interpolation by the local shell (I<dsh echo '$PATH'>).
+So, in short, commands typed at the B<dsh> prompt are executed as if for each 
+node you typed I<rsh [remote computer] '[command you enter]'>, 
+where the command you enter is placed in single quotes by B<dsh>.  If
+you chose to add 
+support for the Term-ReadLine-Gnu Perl module during installation, then the 
+B<dsh> prompt has command recall (up and down arrows) and editing 
+(as featured in the GNU readline library).  Also, a local command 
+can be executed by placing an exclamation point (!) in front 
+of the command (e.g. I<dshE<gt> !ls> runs ls on the local computer).
+
+=head1 SPECIFYING NODES
+
+There are 4 ways to specify where B<dsh> should execute a command:
+
+=over
+
+=item B<-a>
+
+This switch adds all the nodes in the file
+$BEOWULF_ROOT/node_groups/ALL, where ALL is a file specifying one node
+per line (IP address or hostname).  Lines that begin with a # and
+lines that have only whitespace are ignored.
+
+I<example:>
+
+	  mtp22@front_end $ cat /usr/local/dsh/node_groups/ALL
+
+	  front_end
+	  # Linux nodes
+	  linux1
+	  linux2
+	  penguin1
+	  penguin2
+	  # OpenBSD nodes
+	  openbsd1
+	  openbsd2
+	  openbsd3
+	  # FreeBSD nodes
+	  freebsd1
+	  freebsd2
+
+	  mtp22@front_end $ dsh -a ls
+
+This will run the command ls on front_end, linux1, linux2,
+penguin1, penguin2, openbsd1, openbsd2, openbsd3, freebsd1, and
+freebsd2
+
+=item B<-N> I<nodegroup1, nodegroup2, nodegroup3, ...>
+
+This switch adds all the nodes in the file
+$BEOWULF_ROOT/node_groups/nodegroup1 and all the nodes in the file
+$BEOWULF_ROOT/node_groups/nodegroup2, etc. As with the ALL file,
+the format of these nodegroup files is one node per line (IP address
+or hostname).  Lines that begin with a # and lines that have only 
+whitespace are ignored.
+
+I<example:>
+
+	  mtp22@front_end $ cat /usr/local/dsh/node_groups/linux
+
+	  # Linux part of the cluster, running Slackware 8.0
+	  linux1
+	  linux2
+	  penguin1
+	  penguin2
+
+	  mtp22@front_end $ cat /usr/local/dsh/node_groups/openbsd
+
+	  # OpenBSD part of the cluster, running OpenBSD 2.9
+	  openbsd1
+	  openbsd2
+	  openbsd3
+
+	  mtp22@front_end $ dsh -N linux, openbsd ls
+
+This will run the command ls on linux1, linux2,
+penguin1, penguin2, openbsd1, openbsd2, and openbsd3
+
+=item B<-w> I<node1, node2, node3, ...>
+
+This switch adds the nodes node1, node2, node3, etc.
+
+I<example:>
+
+	  mtp22@front_end $ dsh -w freebsd1, freebsd2 ls
+
+This will run the command ls on freebsd1 and freebsd2
+
+I<example:>
+
+	  mtp22@front_end $ dsh -w 10.10.10.1, 10.10.10.2, 10.10.10.3 ls
+
+This will run the command ls on 10.10.10.1, 10.10.10.2, and 10.10.10.3
+
+=item B<WCOLL>
+
+If none of the above switches (-a, -N, -w) is specified, B<dsh> defaults
+to adding the nodes specified in the file pointed to by WCOLL. B<dsh>
+only looks at this environment variable when none of the 3 switches
+described above is specified.
+
+I<example:>
+
+	  mtp22@front_end $ export WCOLL=/home/mtp22/bsd
+
+	  mtp22@front_end $ cat /home/mtp22/bsd
+
+	  openbsd1
+	  openbsd2
+	  openbsd3
+	  freebsd1
+	  freebsd2
+
+	  mtp22@front_end $ dsh ls
+
+This will run the command ls on openbsd1, openbsd2, openbsd3, freebsd1, and
+freebsd2
+
+=item B<Combining -a, -N, and -w>
+
+You can combine the -a, -N, and -w switches in any order.
+
+I<example:>
+
+	  mtp22@front_end $ dsh -N linux -w front_end ls
+
+This will run the command ls on linux1, linux2, penguin1, penguin2,
+and front_end
+
+=item B<Duplicate Nodes>
+
+B<dsh> has a somewhat complicated way of dealing with duplicate nodes.
+For example, if the node which has IP address 10.10.10.3 is called
+linux3 and is aliased to tux3, then entering I<dsh -w linux3, tux3 ls>
+will only execute the command on 10.10.10.3 once. Similarly,
+I<dsh -w linux3, 10.10.10.3 ls> will only execute the command on 10.10.10.3 
+once.
+
+A more complicated example is a computer which has more than one
+IP address.  For example, say front_end has a local IP address
+10.10.10.254 and a remote IP address 128.205.83.101.  The following
+commands are equivalent in that they will execute the command ls on
+front_end only once (the IP address used to contact this node is the
+first IP address returned by I<gethostbyname(3)>):
+
+	dsh -w front_end ls
+	dsh -w 10.10.10.254 ls
+	dsh -w 128.205.83.101 ls
+	dsh -w front_end, 10.10.10.254 ls
+	dsh -w 10.10.10.254, front_end ls
+	dsh -w front_end, 128.205.83.101 ls
+	dsh -w 128.205.83.101, front_end ls
+	dsh -w front_end, 10.10.10.254, 128.205.83.101 ls
+	dsh -w front_end, 128.205.83.101, 10.10.10.254 ls
+	dsh -w 10.10.10.254, front_end, 128.205.83.101 ls
+	dsh -w 128.205.83.101, front_end, 10.10.10.254 ls
+
+In general, B<dsh> will remove duplicates; however, there are cases where
+B<dsh> won't remove duplicates because it cannot tell from IP
+addresses alone whether they refer to the same computer (i.e. B<dsh>
+doesn't do reverse name lookups when looking for duplicates).  For 
+example, in the above scenario, the combinations which will
+result in B<dsh> executing the command more than once are those which start
+with the two IP addresses:
+
+	dsh -w 10.10.10.254, 128.205.83.101 ls
+	dsh -w 128.205.83.101, 10.10.10.254 ls
+	dsh -w 10.10.10.254, 128.205.83.101, front_end ls
+	dsh -w 128.205.83.101, 10.10.10.254, front_end ls
+
+To see why, refer to the next section.
+
+=item B<A Brief Description of How dsh Removes Duplicates>
+
+B<dsh> looks at each node, in the order of -w nodes first, and -a and -N
+nodegroups second (the order of these last two depending on the order
+they appear on the command line).  For each node, B<dsh> resolves the name
+to a set of IP addresses using I<gethostbyname(3)>; if any of these IP
+addresses has already been seen, the node is removed from the list
+(note: in the case of duplicates found in nodes specified by -a and
+-N, the nodes are not removed from the actual files, they are only
+removed from the current list, which is stored in RAM).
+
+I<example:>
+
+	  mtp22@front_end $ dsh -w front_end, 128.205.83.101 ls
+
+This will run the command on front_end only once because B<dsh>
+performs the following duplication analysis: it looks at front_end
+and resolves it into the IP addresses 10.10.10.254 and
+128.205.83.101.  Neither of these IP addresses have been seen before,
+so it doesn't remove front_end from the list. B<dsh>
+then looks at 128.205.83.101 and resolves it into the IP address
+128.205.83.101.  This address has been seen before, so it removes
+128.205.83.101 from the list.
+
+I<example:>
+
+	mtp22@front_end $ dsh -w 10.10.10.254, 128.205.83.101 ls
+
+This will run the command on front_end twice because B<dsh>
+performs the following duplication analysis: it looks at 10.10.10.254
+and resolves it into the IP address 10.10.10.254.  This IP address
+hasn't been seen before, so it doesn't remove 10.10.10.254 from the
+list. B<dsh> then looks at 128.205.83.101 and resolves it into the IP address
+128.205.83.101.  This address hasn't been seen before, so it doesn't
+remove 128.205.83.101 from the list.
+
+If you're not sure about duplicates, you can use the -q switch to see 
+the list of nodes where B<dsh> would execute the command without actually 
+executing the command.
+
+=back
+
+=head1 ENVIRONMENT VARIABLES
+
+=head2 BEOWULF_ROOT
+
+This is the directory that B<dsh> uses to search for node groups
+(specified with the -N switch) and the ALL file (specified with the -a
+switch).  Note that whatever directory is specified in the variable
+BEOWULF_ROOT must have a subdirectory called node_groups where the
+various nodegroup files and the ALL file are located. 
+The default value of BEOWULF_ROOT is /usr/local/dsh
+
+=head2 FANOUT
+
+This is the number of nodes to run the command on in parallel.  The
+default value is all of the nodes; however, you may wish to limit this
+value if you have an extremely large number of nodes or if the machine
+where you are running dsh from has a small amount of free resources.
+For each node, 3 processes are forked, so to calculate the number of
+processes running at one time, multiply FANOUT by 3 and add 1 (for B<dsh>)
+
+=head2 WCOLL
+
+See SPECIFYING NODE GROUPS
+
+=head1 SWITCHES
+
+=over
+
+=item B<-N> I<nodegroup1, nodegroup2, ...>
+
+See SPECIFYING NODE GROUPS
+
+=item B<-a>
+
+See SPECIFYING NODE GROUPS
+
+=item B<-w> I<node1, node2, ...>
+
+See SPECIFYING NODE GROUPS
+
+=item B<-q>
+
+Lists the nodes where dsh would execute the command without actually
+executing the command
+
+=item B<-e> I<'command'>
+
+Executes the command in quotes on all the specified nodes.  The reason for this
+switch is that putting the command to execute at the end of the
+command line without single quotes can lead to metacharacter issues
+(see L<B<QUOTING SHELL METACHARACTERS>> below).  This way of specifying the 
+command avoids this problem.
+
+=item B<-t> I<time_in_seconds>
+
+Specifies the time to wait for a node to respond before labeling it
+"unreachable".  The default value is 5.  Specifying 0 indicates no
+timeout.
+
+=item B<-f>
+
+If this flag is specified, B<dsh> won't prompt the user whether or not to
+continue if a node is unreachable or refusing a remote connection. B<dsh>
+will assume it should continue, bypassing the node. This is useful if B<dsh>
+is run in a non-interactive script.
+
+=item B<-h>
+
+Displays a message containing a brief description of the command line
+switches
+
+=back
+
+=head1 QUOTING SHELL METACHARACTERS
+
+When B<dsh> is used in the form I<dsh [options] command>,
+there is an issue with shell metacharacters.  That is, characters in
+I<command> are interpreted by the local shell before they are passed to
+B<dsh>. For example, I<dsh -w 10.10.10.1, 10.10.10.2 find / -name 
+bash E<gt> bash.find>
+will be interpreted as 'run dsh -w 10.10.10.1, 10.10.10.2 find /
+-name bash and place the results of this program in the file
+bash.find on the local computer'.  This does not run find / -name
+bash on 10.10.10.1 and 10.10.10.2 and place the results of find 
+in files named bash.find on the remote computers.  
+To do that you would need to type I<dsh -w 10.10.10.1, 10.10.10.2 find / -name 
+bash 'E<gt>' bash.find> to avoid interpretation of > by the local
+shell. Another way to avoid local metacharacter interpretation is to
+use the -e switch: I<dsh -w 10.10.10.1, 10.10.10.2 -e 'find / -name 
+bash E<gt> bash.find'>. I highly recommend using the -e switch to
+execute commands or running dsh in interactive mode because most
+modern shells have many metacharacters and quoting these can be tricky even
+if you do recognize all of them.
+
+=head1 EXIT CODES
+
+If B<dsh> exits cleanly (that is, if B<dsh> is allowed to call exit itself),
+the exit code of B<dsh> will either be a 0 or a 1.  0 indicates that B<dsh>
+at least ran the command "rsh (node) command" for every non-duplicate
+node.  Note that an exit code of 0 does not mean that every rsh was 
+successful nor does it mean that the command exited with a code of 
+0 on the remote computer :-\ . The way B<dsh> executes rsh commands
+doesn't lend itself to capturing their exit codes.  An exit code of 1 indicates
+that B<dsh> did not attempt to run the command on any remote computers 
+because of an error.
+
+=head1 WEBSITE
+
+http://dsh.sourceforge.net
+
+=head1 AUTHORS
+
+B<dsh> was originally written by Jason Rappleye <rappleye@ccr.buffalo.edu>
+at the Center for Computational Research at the University at Buffalo. Version 
+2.0 was written by Matthew T. Piotrowski <mtp22@users.sourceforge.net> at the
+Center for Computational Research.  Thanks to dale@bewley.net for his 
+contributions to the early stages of version 2.0.  This manpage was written by 
+Matthew T. Piotrowski, with help from the OpenSSH manpage (ssh.1), version
+1.99, which was used as a reference.
+
+=head1 SEE ALSO
+
+I<rsh(1)>, I<gethostbyname(3)>, I<ssh(1)>

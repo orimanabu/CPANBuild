@@ -1,0 +1,7 @@
+add long switch names (i.e. --)
+
+convert or rewrite the manpage in pod so that it is more portable
+
+add more info in INSTALL under the section CONFIGURING RSH about running inetd
+and more info about running inetd and rshd on more operating systems
+

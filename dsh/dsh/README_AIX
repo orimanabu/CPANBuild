@@ -1,0 +1,8 @@
+Operating System: AIX 4.3.3.0.8, running on rs6000 processors
+Software: Perl 5.005_03, dsh 2.0.3, Term-ReadLine-Gnu 1.10, GNU
+Realine library 4.2
+
+If I wanted to use the Term-ReadLine-Gnu Perl module, I needed to
+first install the GNU Readline library.
+
+mtp22@users.sourceforge.net

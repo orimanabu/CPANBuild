@@ -1,0 +1,12 @@
+Operating System: Solaris 8, running on Sun Blade 1000 processors
+Software: Perl 5.005_03, dsh 2.0.3, Term-ReadLine-Gnu 1.10, GNU
+Realine library 4.2
+
+If I wanted to use the Term-ReadLine-Gnu Perl module, I needed to
+first install the GNU Readline library.
+
+When installing the GNU Readline library, ./configure did not find the
+location of ar, so I had to edit the Makefile and change the line that
+said "AR =" to "AR = /usr/ccs/bin/ar"
+
+mtp22@users.sourceforge.net

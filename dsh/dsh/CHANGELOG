@@ -1,0 +1,39 @@
+v2.0.1 Jan 14 2002 mtp
+fixed my email address on the manpage
+(hey, noone sent me a message telling me it was wrong :-P)
+
+installation bug fixes
+
+v2.0.0 Aug 01 2001 mtp
+
+added parallel execution of the command 
+(now dsh is a lot faster) 
+
+added a configuration script
+(makes dsh installation a lot easier and makes dsh more portable)
+
+wrote a manpage from scratch
+(includes the many new features of version 2.0 and there are lots of examples--
+ I like examples)
+
+added verification of the status of the nodes before execution of the command
+(hey, sometimes nodes go down, and it's helpful to be notified of this before
+you try to run a command on these nodes)
+
+based the removal of duplicate nodes on IP addresses instead of hostnames
+(different hostnames can refer to the same IP address)
+ 
+added standard error to the node output
+(I sure like to be notified of errors :-) )
+
+fixed the quoting of shell metacharacters
+(an important fix, see the -e switch in the manpage)
+
+fixed the formatting of the output when the names of nodes are different lengths
+(easier on the eyes)
+
+implemented fanout
+(not everyone has front end computers with tons of resources, see FANOUT in
+ the manpage)
+
+
